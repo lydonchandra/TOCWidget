@@ -1,6 +1,9 @@
 http://lydon.ch/content/tocwidget-esri-arcgis-flexviewer-25
 
-It's quite hard to find the previous versions of TOCWidget written by Robert Scheitlin
+It's quite hard to find the previous versions of TOCWidget 
+written by 
+Robert Scheitlin http://www.linkedin.com/in/robertscheitlin 
+
 http://www.arcgis.com/rc/item.html?id=e2cb71d5c04d40d19e9f945ae0db7ce8
 http://forums.arcgis.com/threads/18453-Table-of-Contents-Legend-Widget-for-FlexViewer-2.x
 
