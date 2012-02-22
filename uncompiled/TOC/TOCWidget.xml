@@ -1,0 +1,39 @@
+<?xml version="1.0" ?>
+<!--
+////////////////////////////////////////////////////////////////////////////////
+//
+// Copyright (c) 2010 ESRI
+//
+// All rights reserved under the copyright laws of the United States.
+// You may freely redistribute and use this software, with or
+// without modification, provided you include the original copyright
+// and use restrictions.  See use restrictions in the file:
+// <install location>/FlexViewer/License.txt
+//
+////////////////////////////////////////////////////////////////////////////////
+-->
+<configuration>
+	<labels>
+		<visibilitylabel>Layer Visibility</visibilitylabel>
+		<legendlabel>Show Dynamic Map Legend</legendlabel>
+		<alphatooltip>Select parent map service to set opacity</alphatooltip>
+		<metadatatooltip>Show details</metadatatooltip>
+		<zoomtoextent>Zoom To Layer Extent</zoomtoextent>
+		<expandall>Expand All Layers</expandall>
+		<collapseall>Collapse All Layers</collapseall>
+		<zoomtomakevisible>Zoom To Make Visible</zoomtomakevisible>
+		<generatinglegendmsg>Generating TOC Legend</generatinglegendmsg>
+	</labels>
+	<tocsettings>
+		<expanded>false</expanded>
+		<showdescriptionbutton>true</showdescriptionbutton>
+		<collapselegends>false</collapselegends>
+		<alphasliderenabled>true</alphasliderenabled>
+	</tocsettings>
+	<legendtimeout>60</legendtimeout>
+	<excludelayers >
+		<excludelayer mapservice="Layers">0</excludelayer>
+	</excludelayers>
+	<excludegraphiclayers>true</excludegraphiclayers>
+	<excludebasemaplayers>true</excludebasemaplayers>
+</configuration>

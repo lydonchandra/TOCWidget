@@ -1,0 +1,494 @@
+<?xml version="1.0" encoding="utf-8"?>
+<viewer:BaseWidget xmlns:fx="http://ns.adobe.com/mxml/2009"
+                   xmlns:s="library://ns.adobe.com/flex/spark"
+                   xmlns:mx="library://ns.adobe.com/flex/mx"
+                   xmlns:viewer="com.esri.viewer.*"
+				   xmlns:Toc="widgets.TOC.*"
+                   xmlns:toccomp="widgets.TOC.toc.*"
+				   xmlns:esri="http://www.esri.com/2008/ags"
+                   widgetConfigLoaded="init()"
+                   x="600"
+                   y="400">
+	
+	<fx:Declarations>
+		<esri:GeometryService id="geometryService"
+							  fault="geometryService_faultHandler(event)"
+							  url="http://tasks.arcgisonline.com/ArcGIS/rest/services/Geometry/GeometryServer"/>
+	</fx:Declarations>
+	
+    <fx:Script>
+        <![CDATA[
+			import com.esri.ags.events.GeometryServiceEvent;
+			import com.esri.ags.events.MapEvent;
+			import com.esri.ags.events.ZoomEvent;
+			import com.esri.ags.layers.FeatureLayer;
+			import com.esri.ags.layers.GraphicsLayer;
+			import com.esri.ags.layers.Layer;
+			import com.esri.ags.tasks.GeometryServiceSingleton;
+			import com.esri.viewer.AppEvent;
+			import com.esri.viewer.ViewerContainer;
+			
+			import mx.collections.ArrayCollection;
+			import mx.controls.Alert;
+			import mx.events.CollectionEvent;
+			import mx.events.CollectionEventKind;
+			import mx.events.FlexMouseEvent;
+			import mx.events.ListEvent;
+			import mx.rpc.AsyncResponder;
+			import mx.rpc.events.FaultEvent;
+			import mx.rpc.events.ResultEvent;
+			
+			import spark.components.supportClasses.ItemRenderer;
+			
+			import widgets.TOC.toc.tocClasses.TocItem;
+			import widgets.TOC.toc.tocClasses.TocItemRenderer;
+			import widgets.TOC.toc.tocClasses.TocLayerInfoItem;
+			import widgets.TOC.toc.tocClasses.TocMapLayerItem;
+			
+			[Event(name="layervischanged", type="flash.events.Event")]
+			private static const LAYER_VIS_CHANGED:String = "layervischanged";
+			
+            private const ICON_URL:String = "widgets/TOC/assets/images/";
+			
+			[Embed(source="widgets/TOC/assets/images/plus.png")]
+			public var plus:Class;
+			
+			[Embed(source="widgets/TOC/assets/images/minus.png")]
+			public var minus:Class;
+			
+			[Bindable]
+			private var expanded:Boolean = false;
+			
+			[Bindable]
+			private var legendCollapsed:Boolean = false;
+			
+			[Bindable]
+			public var tocMenu:ContextMenu;
+			
+			public var lastTreeItem:ListEvent;
+			
+			private var _sellayer:Layer;
+			
+			[Bindable]
+			private var alphaVis:Boolean;
+			
+			//labels
+			[Bindable]
+			private var AlphaToolTip:String;
+			
+			[Bindable]
+			private var MetadataToolTip:String;
+			
+			[Bindable]
+			private var lTimeout:int = 60;
+			
+			[Bindable]
+			private var excludedLayers:ArrayCollection;
+			
+			private var excludeGraphicsLayers:Boolean = false;
+			
+			[Bindable]
+			private var showDesc:Boolean;
+			
+			[Bindable]
+			private var layerIsSelected:Boolean;
+			
+			[Bindable]
+			private var ZoomToExtent:String;
+			
+			[Bindable]
+			private var ZoomToMakeVisible:String;
+			
+			[Bindable]
+			private var ExpandAll:String;
+			
+			[Bindable]
+			private var CollapseAll:String;
+			
+			[Bindable]
+			private var GeneratingLegendMsg:String;
+			
+			[Embed(source="widgets/TOC/assets/images/alpha.png")]
+			[Bindable]
+			private var alphaIcon:Class;
+
+            private function init():void
+            {
+                if (configXML)
+                {
+					if (GeometryServiceSingleton.instance.url) // using GeometryServiceSingleton
+					{
+						geometryService.url = GeometryServiceSingleton.instance.url;
+						geometryService.token = GeometryServiceSingleton.instance.token;
+						geometryService.proxyURL = GeometryServiceSingleton.instance.proxyURL;
+					}
+					ZoomToExtent = configXML.labels.zoomtoextent || "Zoom To Layer Extent";
+					ZoomToMakeVisible = configXML.labels.zoomtomakevisible || "Zoom To Make Visible";
+					ExpandAll = configXML.labels.expandall || "Expand All Layers";
+					CollapseAll = configXML.labels.collapseall || "Collapse All Layers";
+					AlphaToolTip = configXML.labels.alphatooltip || "Set Map Layer Transparency";
+					MetadataToolTip = configXML.labels.metadatatooltip || "Show Details";
+					GeneratingLegendMsg = configXML.labels.generatinglegendmsg || "Generating TOC Legend";
+					lTimeout = configXML.legendtimeout || 60;
+					expanded = configXML.tocsettings.expanded && configXML.tocsettings.expanded == "true";
+					showDesc = configXML.tocsettings.showdescriptionbutton && configXML.tocsettings.showdescriptionbutton == "true";
+					legendCollapsed = configXML.tocsettings.collapselegends && configXML.tocsettings.collapselegends == "true";
+					alphaVis = configXML.tocsettings.alphasliderenabled && configXML.tocsettings.alphasliderenabled == "true";
+                    toc.map = map;
+                    toc.isMapServiceOnly = false; //gotta get this from the config file
+					toc.excludeGraphicsLayers = configXML.excludegraphiclayers &&  configXML.excludegraphiclayers == "true";
+					toc.setStyle("disclosureOpenIcon", minus);
+					toc.setStyle("disclosureClosedIcon", plus);
+					
+					excludedLayers = new ArrayCollection;
+					excludeGraphicsLayers = configXML.excludegraphiclayers && configXML.excludegraphiclayers == "true";
+					if (configData && configData.basemaps){
+						if(configXML.excludebasemaplayers && configXML.excludebasemaplayers == "true"){
+							var bname:String;
+							// exclude basemaps
+							for (var b:int = 0; b < configData.basemaps.length; b++)
+							{
+								bname = configData.basemaps[b].label;
+								var excludesb:Object =
+									{
+										name: bname,
+										ids: null
+									}
+								excludedLayers.addItem(excludesb);
+							}
+						}
+					}
+					
+					var excludeList:XMLList = configXML..excludelayer;
+					for (var i:Number = 0; i < excludeList.length(); i++)
+					{
+						var name:String = excludeList[i].@mapservice;
+						var ids:String = excludeList[i];
+						var idsArray:Array = ids.split(",");
+						if(idsArray[0] == "")
+							idsArray = null;
+						var excludes:Object =
+							{
+								name: name,
+								ids: idsArray
+							}
+						excludedLayers.addItem(excludes);
+					}
+                }
+				toc.excludeLayers = excludedLayers;
+				tocMenu = new ContextMenu();
+				tocMenu.addEventListener(ContextMenuEvent.MENU_SELECT, contextMenuTriggered);
+				toc.contextMenu = tocMenu;
+				scr.addEventListener(MouseEvent.MOUSE_WHEEL, bumpDelta, true);
+            }
+			
+			private function setLastTreeItem(event:ListEvent):void
+			{
+				lastTreeItem = event;
+			}
+			
+			private function setSelectedTreeItem(event:ListEvent):void
+			{
+				var item:TocItem = TocItem(event.itemRenderer.data);
+				if (item is TocMapLayerItem){
+					var item2:TocMapLayerItem = item as TocMapLayerItem;
+					_sellayer = item2.layer;
+					layerIsSelected = true;
+					if(slider)
+						slider.value = item2.layer.alpha;
+				}else{
+					layerIsSelected = false;
+				}
+			}
+			
+			//set layer alpha
+			private function setLayerAlpha():void
+			{
+				_sellayer.alpha = slider.value;
+			}
+			
+			private function cmItemTriggered(event:ContextMenuEvent):void
+			{
+				if( lastTreeItem != null )
+				{
+					var item:TocItem = TocItem(lastTreeItem.itemRenderer.data);
+					if (item is TocLayerInfoItem){
+						var item2:TocLayerInfoItem = item as TocLayerInfoItem;
+						if ( map.scale >= item2.minScale && item2.minScale != 0) {
+							map.scale = item2.minScale - 1;
+							if(map.level){
+								if(item2.minScale <  map.lods[map.level].scale)
+									map.level++;
+							}
+						} else if (map.scale <= item2.maxScale && item2.maxScale != 0) {
+							map.scale = item2.maxScale + 1;
+							if(map.level){
+								if(item2.maxScale >  map.lods[map.level].scale)
+									map.level--;
+							}
+						}
+					}else if (item is TocMapLayerItem){
+						var item3:TocMapLayerItem = item as TocMapLayerItem;
+						if ( map.scale >= item3.minScale && item3.minScale != 0) {
+							map.scale = item3.minScale - 1;
+							if(map.level){
+								if(item3.minScale <  map.lods[map.level].scale)
+									map.level++;
+							}
+						} else if (map.scale <= item3.maxScale && item3.maxScale != 0) {
+							map.scale = item3.maxScale + 1;
+							if(map.level){
+								if(item3.maxScale >  map.lods[map.level].scale)
+									map.level--;
+							}
+						}
+					}
+				}
+			}
+			
+			private function cmItemTriggered2(event:ContextMenuEvent):void
+			{
+				if( lastTreeItem != null )
+				{
+					var item:TocItem = TocItem(lastTreeItem.itemRenderer.data);
+					if (item is TocLayerInfoItem){
+						var item2:TocLayerInfoItem = item as TocLayerInfoItem;
+						if(item2.layerExtent.spatialReference != map.spatialReference){
+							geometryService.project([item2.layerExtent],map.spatialReference, 
+								new AsyncResponder( onResult, null));
+								function onResult(result:Object, token:Object):void{
+									map.extent = result[0];
+									if (!map.extent.contains(result[0]))
+									{
+										map.level--;
+									}
+								};
+						}else{
+							map.extent = item2.layerExtent;
+						}
+					}else if (item is TocMapLayerItem){
+						var item3:TocMapLayerItem = item as TocMapLayerItem;
+						if(item3.layerExtent.spatialReference != map.spatialReference){
+							geometryService.project([item3.layerExtent],map.spatialReference, 
+								new AsyncResponder( onResult2, null));
+							function onResult2(result:Object, token:Object):void{
+								map.extent = result[0];
+								if (!map.extent.contains(result[0]))
+								{
+									map.level--;
+								}
+							};
+						}else{
+							map.extent = item3.layerExtent;
+						}
+					}
+				}
+			}
+			
+			private function cmItemTriggered3(event:ContextMenuEvent):void
+			{
+				const _tocRoots:ArrayCollection = toc.dataProvider as ArrayCollection;
+				for (var i:int = 0; i < _tocRoots.length; i++)
+				{
+					const item:TocItem = _tocRoots[i];
+					expandAll(item, event);
+					_tocRoots.refresh();
+				}
+			}
+			
+			private function expandAll(item:TocItem, event:ContextMenuEvent):void
+			{
+				item.collapsed = false;
+				toc.expandItem(item, true, true, true, event);
+				if(item.isGroupLayer()){
+					for each (var item2:TocItem in item.children){
+						expandAll(item2, event);
+					}
+				}
+			}
+			
+			private function cmItemTriggered4(event:ContextMenuEvent):void
+			{
+				const _tocRoots:ArrayCollection = toc.dataProvider as ArrayCollection;
+				for (var i:int = 0; i < _tocRoots.length; i++)
+				{
+					const item:TocItem = _tocRoots[i];
+					collapseAll(item, event);
+					_tocRoots.refresh();
+				}
+			}
+			
+			private function collapseAll(item:TocItem, event:ContextMenuEvent):void
+			{
+				item.collapsed = true;
+				toc.expandItem(item, false, true, true, event);
+				if(item.isGroupLayer()){
+					for each (var item2:TocItem in item.children){
+						collapseAll(item2, event);
+					}
+				}
+			}
+			
+			private function geometryService_faultHandler(event:FaultEvent):void
+			{
+				Alert.show(event.fault.toString(), wTemplate.widgetTitle);
+			}
+			
+			public function contextMenuTriggered(event:ContextMenuEvent):void
+			{
+				tocMenu.hideBuiltInItems();
+				tocMenu.customItems = new Array();
+				
+				if( lastTreeItem != null)
+				{
+					var item:TocItem = TocItem(lastTreeItem.itemRenderer.data);
+					
+					var addMenuItem3:ContextMenuItem = new ContextMenuItem(ExpandAll,true);
+					addMenuItem3.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, cmItemTriggered3);
+					var addMenuItem4:ContextMenuItem = new ContextMenuItem(CollapseAll);
+					addMenuItem4.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, cmItemTriggered4);
+					
+					if(!isFeatureLayerChild(item)){
+						if( item.scaledependant){
+							var addMenuItem:ContextMenuItem = new ContextMenuItem(ZoomToMakeVisible);
+							addMenuItem.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, cmItemTriggered);
+							tocMenu.customItems.push(addMenuItem);
+						}
+						if (item is TocLayerInfoItem || (item is TocMapLayerItem && TocMapLayerItem(item).layer is FeatureLayer)){
+							var addMenuItem2:ContextMenuItem = new ContextMenuItem(ZoomToExtent);
+							addMenuItem2.addEventListener(ContextMenuEvent.MENU_ITEM_SELECT, cmItemTriggered2);
+							tocMenu.customItems.push(addMenuItem2);
+							tocMenu.customItems.push(addMenuItem3);
+							tocMenu.customItems.push(addMenuItem4);
+						}
+						if(item is TocMapLayerItem)
+						{
+							tocMenu.customItems.push(addMenuItem3);
+							tocMenu.customItems.push(addMenuItem4);
+						}
+					}
+				}
+			}
+			
+			/**
+			 * Whether the specified TOC item is a child of a Feature Layer map service layer.
+			 */
+			private function isFeatureLayerChild(item:TocItem):Boolean
+			{
+				while (item)
+				{
+					item = item.parent;
+					if (item is TocMapLayerItem)
+					{
+						if (TocMapLayerItem(item).layer is FeatureLayer)
+						{
+							return true;
+						}
+					}
+				}
+				return false;
+			}
+
+			private function getExcludeLayers():ArrayCollection
+			{
+				var result:ArrayCollection = new ArrayCollection();
+				
+				if (configData && configData.basemaps)
+				{
+					if(configXML.excludebasemaplayers &&  configXML.excludebasemaplayers == "true")
+					{
+						// exclude basemaps
+						for (var i:int = 0; i < configData.basemaps.length; i++)
+						{
+							result.addItem(configData.basemaps[i].label);
+						}
+					}
+				}
+				
+				if (configXML)
+				{
+					// exclude these layers
+					var layers:XMLList = configXML..excludelayer as XMLList;
+					for (var j:Number = 0; j < layers.length(); j++)
+					{
+						result.addItem(layers[j].toString());
+					}
+				}
+				
+				return result;
+			}
+			
+			private function sldrDataTipFormatter(value:Number):String 
+			{ 
+				return _sellayer.name + ": " + int(value * 100) + "%"; 
+			}
+			
+			protected function bumpDelta(event:MouseEvent):void
+			{
+				event.delta *= 0.5;
+			}
+			
+		]]>
+    </fx:Script>
+    <viewer:WidgetTemplate id="wTemplate"
+                           height="300"
+                           skinClass="com.esri.viewer.skins.WidgetTemplateSkin"
+                           width="380">
+        <s:VGroup id="showTOC"
+				  visible="true"
+				  gap="8"
+                  height="100%"
+                  paddingTop="4"
+                  width="100%">
+			<s:HGroup gap="10" verticalAlign="middle" visible="{alphaVis}" includeInLayout="{alphaVis}">
+				<s:Label styleName="WidgetText" text="Layer Visibility" paddingLeft="6"/>
+				<mx:Image source="{alphaIcon}" width="20" height="20" toolTip="{AlphaToolTip}"/>
+				<s:HSlider id="slider" 
+						   minimum="0" 
+						   maximum="1"
+						   change="setLayerAlpha()"
+						   dataTipFormatFunction="sldrDataTipFormatter"
+						   liveDragging="true"
+						   snapInterval="0.001" 
+						   skinClass="widgets.TOC.alphaSliderSkin"
+						   enabled="{layerIsSelected}"/>
+			</s:HGroup>
+			<s:Scroller id="scr" width="100%" height="100%">
+				<s:Group>
+					<s:layout>
+						<s:VerticalLayout gap="1"/>
+					</s:layout>
+					<s:HGroup id="boxMessage"
+							  width="100%"
+							  includeInLayout="false"
+							  visible="false" 
+							  verticalAlign="middle"
+							  horizontalAlign="center">
+						<mx:Image id="swfMessage"
+								  source="widgets/TOC/assets/images/loader.swf"/>
+						<s:Label id="txtMessage"
+								 width="90%"
+								 text="{GeneratingLegendMsg}"/>
+					</s:HGroup>
+					<toccomp:TOC id="toc"
+								 width="100%"
+								 height="100%"
+								 itemRollOver="setLastTreeItem(event)"
+								 itemClick="setSelectedTreeItem(event)"
+								 metadataToolTip="{MetadataToolTip}"
+								 showMetadataButton="{showDesc}"
+								 expanded="{expanded}"
+								 legendCollapsed="{legendCollapsed}"
+								 liveScrolling="false"
+								 variableRowHeight="true"
+								 tocMinWidth="{wTemplate.width - 45}"
+								 scroller="{scr}"
+								 loader="{boxMessage}"/>
+				</s:Group>
+			</s:Scroller>
+    </s:VGroup>
+		<s:BorderContainer width="{slider.width}" height="{slider.height}" includeInLayout="{alphaVis}"
+						   x="{slider.x}" y="{slider.y}" alpha="0.01" visible="{!slider.enabled}"
+						   toolTip="{AlphaToolTip}"/>
+    </viewer:WidgetTemplate>
+</viewer:BaseWidget>
