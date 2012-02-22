@@ -1,5 +1,21 @@
 http://lydon.ch/content/tocwidget-esri-arcgis-flexviewer-25
 
+It's quite hard to find the previous versions of TOCWidget written by Robert Scheitlin
+http://www.arcgis.com/rc/item.html?id=e2cb71d5c04d40d19e9f945ae0db7ce8
+http://forums.arcgis.com/threads/18453-Table-of-Contents-Legend-Widget-for-FlexViewer-2.x
+
+Now people can find it on GitHub (for 2.4 and 2.5 ArcGIS Viewer for Flex)
+https://github.com/lydonchandra/TOCWidget 
+
+For TOCWidget version 2.5
+https://github.com/lydonchandra/TOCWidget/zipball/v2.5
+https://github.com/lydonchandra/TOCWidget/commit/856679aae0f0e5789ad9c961a76bd6061d69b3c3
+
+For TOCWidget version 2.4
+https://github.com/lydonchandra/TOCWidget/zipball/v2.4
+https://github.com/lydonchandra/TOCWidget/commit/2a61e2d91703ba53f8c249e0eba3cae3b118de38
+
+
 Original Readme.txt :
 
 This is my TOC/Legend widget for Flex Viewer 2.5
