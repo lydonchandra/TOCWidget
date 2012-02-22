@@ -16,7 +16,7 @@ https://github.com/lydonchandra/TOCWidget/zipball/v2.4
 https://github.com/lydonchandra/TOCWidget/commit/2a61e2d91703ba53f8c249e0eba3cae3b118de38
 
 
-Original Readme.txt :
+Original Readme.txt copyright Robert Scheitlin:
 
 This is my TOC/Legend widget for Flex Viewer 2.5
 Initial Release: 12-1-2010
