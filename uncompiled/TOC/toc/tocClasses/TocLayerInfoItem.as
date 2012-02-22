@@ -49,9 +49,6 @@ package widgets.TOC.toc.tocClasses
 	    public function TocLayerInfoItem(parentItem:TocItem, layerInfo:LayerInfo, visibleLayers:Array)
 	    {
 	        super(parentItem);
-			
-			metatooltip = parentItem.metatooltip;
-			metaBtnVisible = parentItem.metaBtnVisible;
 	
 	        _layerInfo = layerInfo;
 	        label = layerInfo.name;

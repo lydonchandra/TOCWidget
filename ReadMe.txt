@@ -1,5 +1,33 @@
-This is my TOC/Legend widget for Flex Viewer 2.4
+This is my TOC/Legend widget for Flex Viewer 2.5
 Initial Release: 12-1-2010
+
+*****************************************************************************************************************************************
+*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*
+*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!  READ THIS !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*
+*!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!*
+*																	*
+* MAJOR CHANGE in this 2.5 version of the TOC Widget											*
+* You CAN NOT use this widget with the LayerListWidget and or MapSwitcherWidget with the layerlist visible="true" 			*
+* Although it will function layer reordering with may throw errors as synchronizing between map layer reorders has issues		*
+*																	*
+* This version of the TOC Widget is dependent on several new AppEvents that were added in Flex Viewer 2.5				*
+* So this means YOU CAN NOT USE THIS VERSION UNLESS YOU ARE RUNNING FLEX VIEWER 2.5!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!		*
+*																	*
+* It is your responsibility to disable the layerlist portion of the MapSwitcherWidget or eMapSwitcherWidget by setting the		* 
+* <layerlist visible="false">														*
+* Also ensure you do not use the TOCWidget with the LayerListWidget.									*
+*																	*
+*****************************************************************************************************************************************
+
+Version 2.5 - 12 Dec, 2011
+* Added new Flex Viewer 2.5 Layer menu capability to TOC.
+* Enhanced the visual appearance of the out of the box Flex Viewer 2.5 Layer options menu and added more options.
+
+Version 2.4.5 - 9 Nov, 2011
+* Fix changes to label in xml file not being honored.
+
+Version 2.4.5 - 9 Nov, 2011
+* Fix changes to label in xml file not being honored.
 
 Version 2.4.4 - 22 Sept, 2011
 * Fix for PictureMarkerSymbols comming from a 10.0 Server.

@@ -124,7 +124,13 @@ package widgets.TOC.toc
 		
 		private var _metadataToolTip:String = "";
 		
-		private var _showMetadataButton:Boolean;
+		public var ZoomToMakeVisible:String = "";
+		
+		public var UseESRIDesc:Boolean = false;
+		
+		public var ExpandAll:String = "";
+		
+		public var CollapseAll:String = "";
 		
 		private var _expanded:Boolean;
 		
@@ -301,12 +307,23 @@ package widgets.TOC.toc
 	    }
 		
 		//--------------------------------------------------------------------------
-		//  Property:  showMetadata
+		//  Property:  labels
 		//--------------------------------------------------------------------------
 		
-		public function set showMetadataButton(value:Boolean):void
+		public function set labels(value:Array):void
 		{
-			_showMetadataButton = value;
+			ZoomToMakeVisible = value[0];
+			ExpandAll = value[1];
+			CollapseAll = value[2];
+		}
+		
+		//--------------------------------------------------------------------------
+		// Property: useesridescription
+		//--------------------------------------------------------------------------
+		
+		public function set useesridescription(value:Boolean):void
+		{
+			UseESRIDesc = value;
 		}
 		
 		//--------------------------------------------------------------------------
@@ -438,19 +455,112 @@ package widgets.TOC.toc
 	
 		private function onLayerReorder(event:MapEvent):void
 		{
-			const layer:Layer = event.layer;
-			const index:int = event.index;
-			
-			for (var i:int = 0; i < _tocRoots.length; i++)
+			event.preventDefault();
+			event.stopImmediatePropagation();
+			for each (var item:Object in this.dataProvider)
 			{
-				const item:Object = _tocRoots[i];
-				if (item is TocMapLayerItem && TocMapLayerItem(item).layer === layer)
+				this.expandItem(item, false);
+			}
+			
+			var layer:Layer = event.layer;
+			var index:int = event.index - 1;
+			
+			var i:int;
+			var currentTOCIndex:int;
+			var currentItem:Object;
+			// remove hidden layes, to get the correct layerIds count
+			var newLayerIds:Array = getNewLayerIds(map.layerIds);
+			if (index <= ((newLayerIds.length - 1) - _tocRoots.length)) // move this item to the bottom of toc
+			{
+				// index of item to move
+				currentTOCIndex = getCurrentTOCIndex();
+				// item to move
+				currentItem = _tocRoots.getItemAt(currentTOCIndex);
+				
+				for (i = currentTOCIndex; i < _tocRoots.length; i++)
 				{
-					_tocRoots.removeItemAt(i);
-					_tocRoots.addItemAt(item, _tocRoots.length - index - 1);
-					break;
+					if (i == _tocRoots.length - 1)
+					{
+						_tocRoots.setItemAt(currentItem, _tocRoots.length - 1);
+					}
+					else
+					{
+						_tocRoots.setItemAt(_tocRoots.getItemAt(i + 1), i);
+					}
 				}
 			}
+			else if (((newLayerIds.length - 1) - _tocRoots.length) < index < (newLayerIds.length - 1))
+			{
+				// index of item to move
+				currentTOCIndex = getCurrentTOCIndex();
+				// item to move
+				currentItem = _tocRoots.getItemAt(currentTOCIndex);
+				
+				var newTOCIndex:Number = (newLayerIds.length - 1) - index - 1;            
+				if (newTOCIndex < currentTOCIndex)
+				{                   
+					for (i = currentTOCIndex; newTOCIndex <= i; i--)
+					{
+						if (i == newTOCIndex)
+						{
+							_tocRoots.setItemAt(currentItem, newTOCIndex);
+						}
+						else
+						{
+							_tocRoots.setItemAt(_tocRoots.getItemAt(i - 1), i);
+						}
+					}
+				}
+				else
+				{                   
+					for (i = currentTOCIndex; i <= newTOCIndex; i++)
+					{
+						if (i == newTOCIndex)
+						{
+							_tocRoots.setItemAt(currentItem, newTOCIndex);
+						}
+						else
+						{
+							_tocRoots.setItemAt(_tocRoots.getItemAt(i + 1), i);
+						}
+					}
+				}
+			}
+			
+			function getCurrentTOCIndex():int
+			{
+				var result:int;
+				for (i = 0; i < _tocRoots.length; i++)
+				{
+					if (_tocRoots.getItemAt(i) is TocMapLayerItem && TocMapLayerItem(_tocRoots.getItemAt(i)).layer === layer)
+					{
+						result = i;
+						break;
+					}
+				}
+				return result;
+			}
+			//This did not work and thus far I can not figure out how to sync
+			//the layer reordering with the layerlist widget or map switcher widget
+			//attempt to re-dispatch event for the mapSwitcher widget
+			//var me:MapEvent = new MapEvent(MapEvent.LAYER_REORDER,map,layer,index - 1);
+			//dispatchEvent(me);
+		}
+		
+		private function getNewLayerIds(layerIds:Array):Array
+		{
+			var result:Array=[];
+			for (var i:int=0; i < layerIds.length; i++)
+			{
+				if (ArrayCollection(map.layers).getItemAt(i).name.indexOf("hiddenLayer_") == -1)
+				{
+					result.push(layerIds);
+				}
+			}
+			//for the dummy layer
+			//result.push(layerIds);
+			
+			return result;        
 		}
 	
 	    private function unregisterAllMapLayers():void
@@ -513,36 +623,33 @@ package widgets.TOC.toc
 	        }
 	
 	        // Add a new top-level TOC item at the beginning of the list (reverse rendering order)
-	        const tocItem:TocMapLayerItem = new TocMapLayerItem(layer, _labelFunction, _isMapServiceOnly, _excludeLayers, _showMetadataButton, _legendCollapsed);
+	        const tocItem:TocMapLayerItem = new TocMapLayerItem(layer, _labelFunction, _isMapServiceOnly, _excludeLayers, _legendCollapsed, _metadataToolTip);
 			
 			tocItem.scroller = _scroller;
 			tocItem.tocMinWidth = _tocMinWidth;
-			tocItem.metatooltip = _metadataToolTip;
 			
 			var ready:Boolean = true;
-			if(_showMetadataButton){
-				if (layer is ArcGISTiledMapServiceLayer) {
-					tocItem.ttooltip = ArcGISTiledMapServiceLayer(layer).serviceDescription;
-				} else if (layer is ArcGISDynamicMapServiceLayer) {
-					tocItem.ttooltip = ArcGISDynamicMapServiceLayer(layer).serviceDescription;
-				} else if (layer is KMLLayer) {
-					tocItem.ttooltip = KMLLayer(layer).description;
-				} else if (layer is FeatureLayer) {
-					var msName:String = FeatureLayer(layer).url.replace("FeatureServer","MapServer");
-					if(msName.substring(msName.length - 9) != "MapServer")
-					{
-						var arc:ArcGISDynamicMapServiceLayer = new ArcGISDynamicMapServiceLayer(msName.substring(0,msName.lastIndexOf("/")));
-						if(arc.loaded){
-							tocItem.ttooltip = arc.serviceDescription
-						}else{
-							ready = false;
-							arc.addEventListener(LayerEvent.LOAD, 
-								function(event:LayerEvent):void{
-									tocItem.ttooltip = ArcGISDynamicMapServiceLayer(event.layer).serviceDescription;
-									_tocRoots.addItemAt(tocItem, 0);
-									if(_expanded) expandItem(tocItem, true, true, false, null);
-								});
-						}
+			if (layer is ArcGISTiledMapServiceLayer) {
+				tocItem.ttooltip = ArcGISTiledMapServiceLayer(layer).serviceDescription;
+			} else if (layer is ArcGISDynamicMapServiceLayer) {
+				tocItem.ttooltip = ArcGISDynamicMapServiceLayer(layer).serviceDescription;
+			} else if (layer is KMLLayer) {
+				tocItem.ttooltip = KMLLayer(layer).description;
+			} else if (layer is FeatureLayer) {
+				var msName:String = FeatureLayer(layer).url.replace("FeatureServer","MapServer");
+				if(msName.substring(msName.length - 9) != "MapServer")
+				{
+					var arc:ArcGISDynamicMapServiceLayer = new ArcGISDynamicMapServiceLayer(msName.substring(0,msName.lastIndexOf("/")));
+					if(arc.loaded){
+						tocItem.ttooltip = arc.serviceDescription
+					}else{
+						ready = false;
+						arc.addEventListener(LayerEvent.LOAD, 
+							function(event:LayerEvent):void{
+								tocItem.ttooltip = ArcGISDynamicMapServiceLayer(event.layer).serviceDescription;
+								_tocRoots.addItemAt(tocItem, 0);
+								if(_expanded) expandItem(tocItem, true, true, false, null);
+							});
 					}
 				}
 			}

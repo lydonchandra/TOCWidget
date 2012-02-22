@@ -48,9 +48,6 @@ package widgets.TOC.toc.tocClasses
 	    public function TocKmlFolderItem(parentItem:TocItem, folder:KMLFolder, layer:KMLLayer)
 	    {
 	        super(parentItem);
-	
-			metatooltip = parentItem.metatooltip;
-			metaBtnVisible = parentItem.metaBtnVisible;
 			
 	        _folder = folder;
 	        _layer = layer;

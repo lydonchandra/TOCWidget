@@ -16,11 +16,12 @@ package widgets.TOC.toc.tocClasses
 	import com.esri.ags.layers.KMLLayer;
 	import com.esri.ags.layers.Layer;
 	import com.esri.ags.layers.TiledMapServiceLayer;
+	import com.esri.viewer.AppEvent;
 	import com.esri.viewer.ViewerContainer;
 	
-	import flash.display.BlendMode;
 	import flash.events.Event;
 	import flash.events.MouseEvent;
+	import flash.geom.Point;
 	
 	import mx.containers.VBox;
 	import mx.controls.Alert;
@@ -41,6 +42,7 @@ package widgets.TOC.toc.tocClasses
 	import spark.primitives.BitmapImage;
 	
 	import widgets.TOC.DetailsWindow;
+	import widgets.TOC.toc.TOC;
 	import widgets.TOC.toc.controls.CheckBoxScaleDependant;
 	
 	/**
@@ -64,10 +66,6 @@ package widgets.TOC.toc.tocClasses
 	
 	    private static const POST_CHECKBOX_GAP:Number = 4;
 		
-		[Embed(source="widgets/TOC/assets/images/metadata.png")]
-		[Bindable]
-		private var _Icon2:Class;
-		
 		[Embed(source="widgets/TOC/assets/images/plus.png")]
 		[Bindable]
 		private var _Expand:Class;
@@ -75,6 +73,21 @@ package widgets.TOC.toc.tocClasses
 		[Embed(source="widgets/TOC/assets/images/minus.png")]
 		[Bindable]
 		private var _Collapse:Class;
+		
+		private var _tocLayerMenu:TocLayerMenu
+		
+		[Embed(source="widgets/TOC/assets/images/Context_menu11.png")]
+		[Bindable]
+		public var contextCls:Class;
+		
+		private var _layerMenuImage:Image;
+		
+		public function TocItemRenderer()
+		{
+			super();
+			
+			addEventListener(MouseEvent.CLICK, itemClickHandler);
+		}
 
 		override public function set data(value:Object):void
 		{
@@ -84,7 +97,6 @@ package widgets.TOC.toc.tocClasses
 			{
 				_btn2 = new Image();
 				_btn2.id = "btnCollapseExp"
-				_btn2.toolTip = "";
 				_btn2.width = 16;
 				_btn2.height = 16;
 				_btn2.buttonMode = true;
@@ -106,18 +118,17 @@ package widgets.TOC.toc.tocClasses
 				addChild(_checkbox);
 			}
 			
-			if (!_btn)
+			if (!_layerMenuImage)
 			{
-				_btn = new Image();
-				_btn.id = "btnMeta"
-				_btn.toolTip = "";
-				_btn.width = 20;
-				_btn.height = 20;
-				_btn.buttonMode = true;
-				_btn.useHandCursor = true;
-				_btn.source = _Icon2;
-				addChild(_btn);
-				_btn.addEventListener(MouseEvent.CLICK, showMeta);
+				_layerMenuImage = new Image();
+				_layerMenuImage.source = contextCls;
+				_layerMenuImage.height = 11;
+				_layerMenuImage.width = 11;
+				_layerMenuImage.setStyle("verticalAlign", "middle");
+				_layerMenuImage.buttonMode = true;
+				addChild(_layerMenuImage);
+				_layerMenuImage.addEventListener(MouseEvent.CLICK, onLayerMenuImageClick);
+				_layerMenuImage.addEventListener(MouseEvent.DOUBLE_CLICK, onLayerMenuImageDoubleClick);
 			}
 			
 			if (!_group)
@@ -144,7 +155,6 @@ package widgets.TOC.toc.tocClasses
 					_group.mouseEnabled = _group.mouseChildren = true;
 				}
 				_checkbox.scaledependant = tocItem.scaledependant;
-				_btn.toolTip = tocItem.metatooltip;
 				_checkbox.selected = tocItem.visible;
 				
 				// Hide the checkbox for child items of tiled map services
@@ -163,15 +173,7 @@ package widgets.TOC.toc.tocClasses
 				
 				//If ScaleDependant than make text gray
 				label.enabled = !tocItem.scaledependant;
-				//(tocItem.scaledependant) ? label.blendMode = BlendMode.SCREEN : label.blendMode = BlendMode.NORMAL;
-				
-				if(tocItem.ttooltip && tocItem.ttooltip != ""){
-					_btn.visible = true;
-					_btn.includeInLayout = true;
-				}else{
-					_btn.visible = false;
-					_btn.includeInLayout = false;
-				}
+
 				if(tocItem.collapsed){
 					_vbox.includeInLayout = _vbox.visible = _group.includeInLayout = _group.visible = false;
 				}else{
@@ -251,24 +253,47 @@ package widgets.TOC.toc.tocClasses
 			invalidateDisplayList();
 		}
 		
-		private function showMeta(evt:Event):void
+		private function onLayerMenuImageClick(event:MouseEvent):void
 		{
-			if (data is TocItem) {
-				var item:TocItem = TocItem(data);
-				if(item.ttooltip && item.ttooltip != ""){
-					var mydetailswindow:DetailsWindow;
-					mydetailswindow = DetailsWindow(PopUpManager.createPopUp(ViewerContainer.getInstance().mapManager.map,DetailsWindow,false,PopUpManagerChildList.POPUP));
-					mydetailswindow.windowDetails = item.ttooltip;
-					mydetailswindow.iconDisplay.source = _Icon2;
-					mydetailswindow.detailsTitle = item.label;
-					PopUpManager.centerPopUp(mydetailswindow);
-				}
+			event.stopPropagation();
+			
+			// need to show/hide pop-up with information.
+			AppEvent.removeListener(AppEvent.TOC_HIDDEN, onRemovalFromStage);
+			
+			if (_tocLayerMenu && _tocLayerMenu.isPopUp){
+				_tocLayerMenu.remove();
+				_tocLayerMenu = null;
+			}else{
+				// let any other popups know a popup is about to be created and opened
+				AppEvent.dispatch(AppEvent.LAUNCHING_TOC_LAYER_MENU);
+				_tocLayerMenu = new TocLayerMenu();
+				var originPoint:Point = new Point(x + width, label.y);
+				if (FlexGlobals.topLevelApplication.layoutDirection != "rtl") // fix for RTL
+					originPoint.x -= _tocLayerMenu.width;
+				var globalPoint:Point = localToGlobal(originPoint);
+				_tocLayerMenu.popUpForItem(parent.parent, data, ViewerContainer.getInstance().mapManager.map, globalPoint.x, globalPoint.y + height);
+				
+				AppEvent.addListener(AppEvent.TOC_HIDDEN, onRemovalFromStage);
 			}
 		}
 		
+		private function onRemovalFromStage(event:AppEvent):void
+		{
+			AppEvent.removeListener(AppEvent.TOC_HIDDEN, onRemovalFromStage);
+			if (_tocLayerMenu)
+			{
+				_tocLayerMenu.remove();
+				_tocLayerMenu = null;
+			}
+		}
+		
+		private function onLayerMenuImageDoubleClick(event:MouseEvent):void
+		{
+			event.stopPropagation();       
+		}
 		
 		public function toggleLegVis(evt:Event):void
-		{
+		{			
 			const tocItem:TocItem = TocItem(data);
 			if (_vbox && _vbox.numChildren > 0)
 			{
@@ -322,9 +347,8 @@ package widgets.TOC.toc.tocClasses
 						}else{
 							w = tocItem.tocMinWidth;
 						}
-						//if(tocItem.ttooltip && tocItem.ttooltip != "") w += 60 else w += 30;
 					}else{
-						if(tocItem.ttooltip && tocItem.ttooltip != "") w += 60 else w += 30;
+						w += _layerMenuImage.measuredWidth;
 					}
 				}
 				measuredWidth = w;
@@ -350,17 +374,10 @@ package widgets.TOC.toc.tocClasses
 				_btn2.visible = _btn2.includeInLayout = false;
 				label.visible = false;
 				_checkbox.visible = false;
-				_btn.visible = false;
+				_layerMenuImage.visible = false;
 				return;
 			}else{
 				label.visible = true;
-				if(tocItem && tocItem.ttooltip && tocItem.ttooltip != ""){
-					_btn.visible = true;
-					_btn.includeInLayout = true;
-				}else{
-					_btn.visible = false;
-					_btn.includeInLayout = false;
-				}
 			}
 			if(tocItem){
 				// Hide the checkbox for child items of tiled map services
@@ -386,7 +403,6 @@ package widgets.TOC.toc.tocClasses
 			//If ScaleDependant than make text gray
 			if(tocItem){
 				label.enabled = !tocItem.scaledependant;
-				//(tocItem.scaledependant) ? label.blendMode = BlendMode.SCREEN : label.blendMode = BlendMode.NORMAL;
 			}
 				
 	        var startx:Number = data ? TreeListData(listData).indent : 0;
@@ -406,7 +422,6 @@ package widgets.TOC.toc.tocClasses
 	        _checkbox.x = startx;
 	        _checkbox.setActualSize(_checkbox.measuredWidth, _checkbox.measuredHeight);
 	        _checkbox.y = 7;
-			_btn.y = 3;
 			_btn2.y = 5;
 			if(_checkbox.visible)
 	        	startx = _checkbox.x + _checkbox.width + POST_CHECKBOX_GAP;
@@ -445,7 +460,26 @@ package widgets.TOC.toc.tocClasses
 				_vbox.x = label.x + 2;
 				_vbox.y = 25;
 			}
-			_btn.x = unscaledWidth - 27;
+			
+			// hide the option button if this is not a layer
+			if (!isLayerItem(tocItem)){
+				_layerMenuImage.visible = false;
+			}else{
+				_layerMenuImage.visible = true;
+			}
+			if(tocItem){
+				if(tocItem.ttooltip && tocItem.ttooltip != "" && !TOC(parent.parent).UseESRIDesc)
+					_layerMenuImage.visible = true;
+				if(tocItem.scaledependant)
+					_layerMenuImage.visible = true;
+			}
+			
+			var layerMenuImageSpace:Number = POST_CHECKBOX_GAP + _layerMenuImage.width + PRE_CHECKBOX_GAP;
+			
+			label.setActualSize(unscaledWidth - startx - layerMenuImageSpace, measuredHeight);
+			
+			_layerMenuImage.x = startx + label.width + PRE_CHECKBOX_GAP;
+			_layerMenuImage.y = (unscaledHeight - _layerMenuImage.height) / 2;
 	    }
 	
 	    /**
@@ -504,6 +538,29 @@ package widgets.TOC.toc.tocClasses
 			}
 			return false;
 		}
+		
+		/**
+		 * Whether the specified TOC item is a child of a map service layer.
+		 */
+		private function isLayerItem(item:TocItem):Boolean
+		{
+			if (item)
+			{
+				if (item is TocMapLayerItem)
+				{
+					if (TocMapLayerItem(item).layer is Layer)
+					{
+						return true;
+					}
+				}
+			}
+			return false;
+		}
+		
+		private function itemClickHandler(event:MouseEvent):void
+		{
+			AppEvent.dispatch(AppEvent.TOC_HIDDEN); // always hide the layer options popup
+		}
 	
 	    /**
 	     * Updates the visible property of the underlying TOC item.
@@ -532,6 +589,7 @@ package widgets.TOC.toc.tocClasses
 	    private function onCheckBoxMouseUp(event:MouseEvent):void
 	    {
 	        event.stopPropagation();
+			AppEvent.dispatch(AppEvent.TOC_HIDDEN); // always hide the layer options popup
 	    }
 	}
 }

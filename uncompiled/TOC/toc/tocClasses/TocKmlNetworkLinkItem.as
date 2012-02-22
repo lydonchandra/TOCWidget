@@ -49,9 +49,6 @@ package widgets.TOC.toc.tocClasses
 	    public function TocKmlNetworkLinkItem(parentItem:TocItem, networkLink:KMLLayer, layer:KMLLayer)
 	    {
 	        super(parentItem);
-			
-			metatooltip = parentItem.metatooltip;
-			metaBtnVisible = parentItem.metaBtnVisible;
 	
 	        _networkLink = networkLink;
 	        _layer = layer;

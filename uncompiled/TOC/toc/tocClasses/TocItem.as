@@ -67,24 +67,6 @@ package widgets.TOC.toc.tocClasses
 		}
 		
 		//--------------------------------------------------------------------------
-		//  Propety:   Metadata tooltip
-		//--------------------------------------------------------------------------
-		
-		internal static const META_TOOLTIP:String = "";
-		
-		private var _mToolTip:String = META_TOOLTIP;
-		
-		public function set metatooltip(value:String):void
-		{
-			_mToolTip = value;
-		}
-		
-		public function get metatooltip():String
-		{
-			return _mToolTip;
-		}
-		
-		//--------------------------------------------------------------------------
 		//  Propety:   minimum renderer width
 		//--------------------------------------------------------------------------
 		
@@ -118,24 +100,6 @@ package widgets.TOC.toc.tocClasses
 		public function get scroller():Scroller
 		{
 			return _scroller;
-		}
-		
-		//--------------------------------------------------------------------------
-		//  Propety:   show Metadata Button
-		//--------------------------------------------------------------------------
-		
-		internal static const SHOW_META:Boolean = false;
-		
-		private var _metaBtnVisible:Boolean = SHOW_META;
-		
-		public function set metaBtnVisible(value:Boolean):void
-		{
-			_metaBtnVisible = value;
-		}
-		
-		public function get metaBtnVisible():Boolean
-		{
-			return _metaBtnVisible;
 		}
 	
 	    //--------------------------------------------------------------------------
