@@ -1,3 +1,7 @@
+http://lydon.ch/content/tocwidget-esri-arcgis-flexviewer-25
+
+Original Readme.txt :
+
 This is my TOC/Legend widget for Flex Viewer 2.5
 Initial Release: 12-1-2010
 
